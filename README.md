@@ -1,5 +1,7 @@
 ### EX8 Web Scraping On E-commerce platform using BeautifulSoup
-### DATE: 
+### DATE: 24.10.2025
+### NAME: EZHIL NEVEDHA K
+### REG.NO: 212223230055
 ### AIM: To perform Web Scraping on Amazon using (beautifulsoup) Python.
 ### Description: 
 <div align = "justify">
@@ -32,41 +34,92 @@ import re
 import matplotlib.pyplot as plt
 
 def convert_price_to_float(price):
-    # Remove currency symbols and commas, and then convert to float
-    price = re.sub(r'[^\d.]', '', price)  # Remove non-digit characters except '.'
+    """Convert price string like '₹1,299.00' → 1299.0"""
+    price = re.sub(r'[^\d.]', '', price)
+    parts = price.split('.')
+    if len(parts) > 1:
+        price = parts[0] + '.' + ''.join(parts[1:])
     return float(price) if price else 0.0
 
 def get_amazon_products(search_query):
     base_url = 'https://www.amazon.in'
     headers = {
-        'User-Agent': 'Your User Agent'  # Add your User Agent here
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/114.0.0.0 Safari/537.36",
+        "Accept-Language": "en-IN,en;q=0.9",
+        "Referer": "https://www.google.com/",
+        "Connection": "keep-alive"
     }
 
     search_query = search_query.replace(' ', '+')
     url = f'{base_url}/s?k={search_query}'
 
-    response = requests.get(url, headers=headers)
-    products_data = []  # List to store product information
+    session = requests.Session()
+    response = session.get(url, headers=headers)
+    products_data = []
 
     if response.status_code == 200:
-        /* TYPE YOUR CODE HERE
+        soup = BeautifulSoup(response.content, 'html.parser')
+        product_elements = soup.select('div.s-main-slot div[data-component-type="s-search-result"]')
 
-    return sorted(products_data, key=lambda x: convert_price_to_float(x['Price']))
+        for product in product_elements:
+            # Product title
+            title_elem = product.select_one('h2 span')
+            title = title_elem.text.strip() if title_elem else 'No Title'
 
+            # Current price
+            price_container = product.select_one('span.a-price')
+            if price_container:
+                price_whole = price_container.select_one('span.a-price-whole')
+                price_fraction = price_container.select_one('span.a-price-fraction')
+                if price_whole and price_fraction:
+                    price = f"{price_whole.text.strip()}.{price_fraction.text.strip()}"
+                elif price_whole:
+                    price = price_whole.text.strip()
+                else:
+                    price = '0'
+            else:
+                price = '0'
+
+            # List price / Original price for discount calculation
+            list_price_elem = product.select_one('span.a-price.a-text-price span.a-offscreen')
+            list_price = convert_price_to_float(list_price_elem.text) if list_price_elem else convert_price_to_float(price)
+
+            current_price = convert_price_to_float(price)
+            # Discount percentage
+            discount = round(((list_price - current_price) / list_price) * 100, 2) if list_price > current_price else 0.0
+
+            products_data.append({
+                'Product': title,
+                'Price': current_price,
+                'Discount (%)': discount
+            })
+
+            print(f'Product: {title}\nPrice: ₹{current_price}\nDiscount: {discount}%\n---')
+
+    else:
+        print(f'Failed to fetch Amazon page: {response.status_code}')
+
+    # Sort by price ascending
+    return sorted(products_data, key=lambda x: x['Price'])
+
+# Main
 search_query = input('Enter product to search on Amazon: ')
 products = get_amazon_products(search_query)
 
-# Displaying product data using a bar chart
-if products:  # Check if products list is not empty
-    product_names = [product['Product'][:30] if len(product['Product']) > 30 else product['Product'] for product in products]
-    product_prices = [convert_price_to_float(product['Price']) for product in products]
+# Plotting
+if products:
+    product_names = [p['Product'][:30] + '...' if len(p['Product']) > 30 else p['Product'] for p in products]
+    product_prices = [p['Price'] for p in products]
+    product_discounts = [p['Discount (%)'] for p in products]
 
-    plt.figure(figsize=(10, 6))
-    plt.barh(range(len(product_prices)), product_prices, color='skyblue')
-    plt.xlabel('Price')
+    plt.figure(figsize=(12, 8))
+    bars = plt.barh(range(len(product_prices)), product_prices, color='skyblue')
+    plt.xlabel('Price (₹)')
     plt.ylabel('Product')
-    plt.title(f'Products and their Prices on Amazon for {search_query.capitalize()} (Ascending Order)')
-    plt.yticks(range(len(product_prices)), product_names)  # Setting y-axis labels as shortened product names
+    plt.title(f'Products, Prices & Discounts on Amazon for "{search_query}"')
+    plt.yticks(range(len(product_prices)), [f"{n} ({d}%)" for n, d in zip(product_names, product_discounts)])
     plt.tight_layout()
     plt.show()
 else:
@@ -75,5 +128,8 @@ else:
 ```
 
 ### Output:
+<img width="1850" height="642" alt="image" src="https://github.com/user-attachments/assets/dbea21a7-44a7-4c53-9584-4f4b16dd85aa" />
+<img width="1091" height="663" alt="image" src="https://github.com/user-attachments/assets/92a9e7b6-6a16-4da3-957a-0bfa05567ab1" />
 
 ### Result:
+Hence, Successfully performed Web Scraping on Snapdeal using (beautifulsoup) Python.
